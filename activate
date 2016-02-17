@@ -4,7 +4,7 @@ if [[ -z ${ORIGINALGOPATH+x} ]]
 then
   ORIGINALGOPATH="$GOPATH"
   ORIGINALPS1="$PS1"
-  GOPATH="${PWD}/deps:${PWD}"
+  GOPATH="${PWD}/deps:${PWD}:$ORIGINALGOPATH"
   PROJDIR="${PWD##*/}"
   PS1="${ORIGINALPS1}GO($PROJDIR)> "
   echo "Activating..."

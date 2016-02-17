@@ -3,6 +3,10 @@
     "deps/src/golang.org/x/net": {
       "URI": "https://go.googlesource.com/net",
       "Ref": "b6d7b1396ec874c3b00f6c84cd4301a17c56c8ed"
+    },
+    "deps/src/golang.org/x/text": {
+      "URI": "https://go.googlesource.com/text",
+      "Ref": "07b9a78963006a15c538ec5175243979025fa7a8"
     }
   },
   "MercurialRepos": {}
