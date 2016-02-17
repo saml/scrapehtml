@@ -1,0 +1,25 @@
+#!/bin/bash
+
+if [[ -z ${ORIGINALGOPATH+x} ]]
+then
+  ORIGINALGOPATH="$GOPATH"
+  ORIGINALPS1="$PS1"
+  GOPATH="${PWD}/deps:${PWD}"
+  PROJDIR="${PWD##*/}"
+  PS1="${ORIGINALPS1}GO($PROJDIR)> "
+  echo "Activating..."
+  echo "GOPATH = $GOPATH"
+
+  deactivate() {
+    export GOPATH="$ORIGINALGOPATH"
+    export PS1="$ORIGINALPS1"
+    echo "Deactivating..."
+    echo "GOPATH = $GOPATH"
+    unset -v ORIGINALGOPATH
+    unset -v ORIGINALPS1
+    unset -f deactivate
+  }
+else
+  echo "Already activated. You may deactivate"
+fi
+

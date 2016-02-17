@@ -1,0 +1,9 @@
+{
+  "GitRepos": {
+    "deps/src/golang.org/x/net": {
+      "URI": "https://go.googlesource.com/net",
+      "Ref": "b6d7b1396ec874c3b00f6c84cd4301a17c56c8ed"
+    }
+  },
+  "MercurialRepos": {}
+}
