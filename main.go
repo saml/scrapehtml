@@ -1,16 +1,16 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
+	"golang.org/x/text/transform"
 )
 
 var client *http.Client
@@ -25,6 +25,8 @@ var eq = []byte("=")
 var comma = []byte(", ")
 var openAttr = []byte(`="`)
 var closeAttr = []byte(`"`)
+var doctype = []byte("<!doctype html>\n")
+var charsetMeta = []byte("<meta charset=\"utf-8\">\n")
 
 func printAttr(w io.Writer, attr *html.Attribute) {
 	w.Write(sp)
@@ -75,17 +77,33 @@ func filterNodes(node *html.Node) {
 	}
 }
 
-func prettyPrint(w io.Writer, node *html.Node, level int, shouldProcess bool) {
+var charsetKeys = map[string]interface{}{
+	"http-equiv": true,
+	"charset":    true,
+}
+
+func hasKey(attributes []html.Attribute, keys map[string]interface{}) bool {
+	for _, attr := range attributes {
+		_, ok := keys[attr.Key]
+		if ok {
+			return true
+		}
+
+	}
+	return false
+}
+
+func prettyPrint(w io.Writer, parentTag string, node *html.Node, level int, shouldProcess bool) {
 	closingTag := ""
 	switch node.Type {
 	case html.ElementNode:
-		tagName := strings.Trim(node.Data, " ")
+		tagName := strings.Trim(node.Data, " \t\n")
 		if tagName == "script" || tagName == "style" || tagName == "noscript" || tagName == "form" {
 			shouldProcess = false
-		} else {
-			if tagName == "meta" || tagName == "img" || tagName == "link" {
+		} else if !(tagName == "meta") || !hasKey(node.Attr, charsetKeys) {
 
-			} else {
+			if !(tagName == "meta" || tagName == "img" || tagName == "link" || tagName == "br" ||
+				tagName == "hr") {
 				closingTag = tagName
 			}
 			indent(w, level)
@@ -98,9 +116,20 @@ func prettyPrint(w io.Writer, node *html.Node, level int, shouldProcess bool) {
 					printAttr(w, &attr)
 				}
 			}
-			w.Write(endTag)
+			w.Write(gt)
+			if !(tagName == "a" || tagName == "span" || tagName == "em" ||
+				tagName == "string" || tagName == "i" || tagName == "title") {
+				w.Write(nl)
+			} else {
+				w.Write(nl)
+			}
+		} else {
+			indent(w, level)
+			w.Write(charsetMeta)
 		}
-
+		level++
+	case html.DoctypeNode:
+		w.Write(doctype)
 	case html.TextNode:
 		txt := strings.Trim(node.Data, " \n\t")
 		if txt != "" {
@@ -112,12 +141,12 @@ func prettyPrint(w io.Writer, node *html.Node, level int, shouldProcess bool) {
 
 	if shouldProcess {
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			prettyPrint(w, c, level+1, shouldProcess)
+			prettyPrint(w, closingTag, c, level, shouldProcess)
 		}
 	}
 
 	if closingTag != "" {
-		indent(w, level)
+		indent(w, level-1)
 		w.Write(closingLt)
 		w.Write([]byte(closingTag))
 		w.Write(endTag)
@@ -132,39 +161,36 @@ func toUtf8(iso8859 []byte) []rune {
 	return buf
 }
 
+func ParseHTML(r io.Reader, cs string) (*html.Node, error) {
+	var err error
+	if cs == "" {
+		// attempt to guess the charset of the HTML document
+		r, err = charset.NewReader(r, "")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// let the user specify the charset
+		e, name := charset.Lookup(cs)
+		if name == "" {
+			return nil, fmt.Errorf("'%s' is not a valid charset", cs)
+		}
+		r = transform.NewReader(r, e.NewDecoder())
+	}
+	return html.Parse(r)
+}
+
 func main() {
-	var url string
-	flag.StringVar(&url, "url", "", "url to fetch")
-	flag.Parse()
-	if url == "" {
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	client = &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	r, err := client.Get(url)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer r.Body.Close()
-
-	body, err := charset.NewReader(r.Body, "text/html")
+	root, err := ParseHTML(os.Stdin, "")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	//x, _ := ioutil.ReadAll(body)
-	//b := strings.NewReader(string(toUtf8(x)))
-	//b := transform.NewReader(body, charmap.ISO8859_2.NewDecoder())
-	root, err := html.Parse(body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	filterNodes(root)
-	prettyPrint(os.Stdout, root, 0, true)
+	//filterNodes(root)
+	prettyPrint(os.Stdout, "", root, 0, true)
+	//log.Printf("%v", root.FirstChild.NextSibling.FirstChild.FirstChild.Data)
+	//filterNodes(root)
+	//prettyPrint(os.Stdout, root, 0, true)
 	//html.Render(os.Stdout, root)
 
 	/*
