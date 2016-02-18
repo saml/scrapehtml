@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 
@@ -12,8 +11,6 @@ import (
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/transform"
 )
-
-var client *http.Client
 
 var lt = []byte("<")
 var gt = []byte(">")
@@ -118,14 +115,6 @@ func prettyPrint(w io.Writer, parentTag string, node *html.Node, level int, shou
 	}
 }
 
-func toUtf8(iso8859 []byte) []rune {
-	buf := make([]rune, len(iso8859))
-	for i, b := range iso8859 {
-		buf[i] = rune(b)
-	}
-	return buf
-}
-
 func ParseHTML(r io.Reader, cs string) (*html.Node, error) {
 	var err error
 	if cs == "" {
@@ -151,29 +140,5 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//filterNodes(root)
 	prettyPrint(os.Stdout, "", root, 0, true)
-	//log.Printf("%v", root.FirstChild.NextSibling.FirstChild.FirstChild.Data)
-	//filterNodes(root)
-	//prettyPrint(os.Stdout, root, 0, true)
-	//html.Render(os.Stdout, root)
-
-	/*
-		tokenizer := html.NewTokenizer(body)
-		for {
-			t := tokenizer.Next()
-			switch t {
-			case html.ErrorToken:
-				log.Fatal(tokenizer.Err())
-			case html.StartTagToken:
-				tag, _ := tokenizer.TagName()
-				log.Printf("%s", tag)
-			case html.EndTagToken:
-				tag, _ := tokenizer.TagName()
-				log.Printf("/%s", tag)
-			}
-
-		}
-	*/
-
 }
