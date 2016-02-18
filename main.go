@@ -40,43 +40,6 @@ func indent(w io.Writer, level int) {
 	w.Write([]byte(strings.Repeat("  ", level)))
 }
 
-func filterNodes(node *html.Node) {
-	switch node.Type {
-	case html.ElementNode:
-		var filteredAttr []html.Attribute
-		for _, attr := range node.Attr {
-			if attr.Key == "style" || attr.Key == "onclick" || attr.Key == "border" || attr.Key == "height" ||
-				attr.Key == "width" {
-
-			} else {
-				filteredAttr = append(filteredAttr, attr)
-			}
-		}
-		node.Attr = filteredAttr
-
-		tagName := strings.Trim(node.Data, " \t\n")
-		if tagName == "script" || tagName == "style" || tagName == "noscript" || tagName == "form" {
-			if node.Parent != nil {
-				node.Parent.RemoveChild(node)
-			}
-		} else if tagName == "meta" {
-			log.Printf("%v", node)
-			for _, attr := range node.Attr {
-				if attr.Key == "http-equiv" || attr.Key == "charset" {
-
-					if node.Parent != nil {
-						node.Parent.RemoveChild(node)
-					}
-				}
-			}
-		}
-	}
-
-	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		filterNodes(c)
-	}
-}
-
 var charsetKeys = map[string]interface{}{
 	"http-equiv": true,
 	"charset":    true,
@@ -123,9 +86,11 @@ func prettyPrint(w io.Writer, parentTag string, node *html.Node, level int, shou
 			} else {
 				w.Write(nl)
 			}
-		} else {
-			indent(w, level)
-			w.Write(charsetMeta)
+
+			if tagName == "head" {
+				indent(w, level+1)
+				w.Write(charsetMeta) // charset utf-8 first
+			}
 		}
 		level++
 	case html.DoctypeNode:
